@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: sec-analyst
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: SEC_USER_AGENT
+        sync: false   # set to "Your Name your@email.com" (SEC requires contact info)
+      - key: ANTHROPIC_API_KEY
+        sync: false   # optional: without it the app runs in offline (XBRL-only) mode
+      - key: TICKERS
+        value: AAPL,MSFT,NVDA
+      - key: FILINGS_PER_TICKER
+        value: "1"

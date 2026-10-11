@@ -1,0 +1,8 @@
+torch
+transformers>=4.46
+datasets
+peft
+trl
+bitsandbytes
+accelerate
+vllm

@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SEC Filings Analyst</title>
+<style>
+  :root { --bg:#0f1115; --card:#181b22; --line:#2a2f3a; --text:#e8eaf0; --mut:#9aa3b2; --acc:#6ea8fe; --ok:#4ade80; --bad:#f87171; }
+  @media (prefers-color-scheme: light) { :root { --bg:#f6f7f9; --card:#fff; --line:#e1e4ea; --text:#14171c; --mut:#5b6472; --acc:#2563eb; --ok:#16a34a; --bad:#dc2626; } }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font:16px/1.55 system-ui,-apple-system,Segoe UI,sans-serif; }
+  main { max-width: 820px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  .sub { color: var(--mut); margin-bottom: 20px; }
+  form { display:flex; gap:8px; }
+  input { flex:1; padding:12px 14px; border-radius:10px; border:1px solid var(--line); background:var(--card); color:var(--text); font-size:1rem; }
+  button { padding:12px 18px; border:0; border-radius:10px; background:var(--acc); color:#fff; font-weight:600; cursor:pointer; }
+  button:disabled { opacity:.6; cursor:wait; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0 20px; }
+  .chip { background:var(--card); border:1px solid var(--line); color:var(--mut); padding:6px 12px; border-radius:999px; font-size:.85rem; cursor:pointer; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px; margin-top:16px; }
+  .badge { display:inline-block; font-size:.75rem; padding:2px 8px; border-radius:999px; border:1px solid var(--line); margin-right:6px; }
+  .ok { color:var(--ok); border-color:var(--ok); } .bad { color:var(--bad); border-color:var(--bad); }
+  pre { white-space:pre-wrap; word-break:break-word; margin:0; font:inherit; }
+  details { margin-top:12px; color:var(--mut); font-size:.85rem; }
+  code { font-family: ui-monospace, Menlo, monospace; font-size:.8rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>SEC Filings Analyst</h1>
+  <div class="sub">Ask about 10-K / 10-Q filings. Numbers come from SEC XBRL and are verified against sources.</div>
+  <form id="f">
+    <input id="q" placeholder="e.g. How did NVDA revenue change from 2023 to 2025?" autocomplete="off" required minlength="3">
+    <button id="go">Ask</button>
+  </form>
+  <div class="chips" id="chips"></div>
+  <div id="out" aria-live="polite"></div>
+</main>
+<script>
+const examples = [
+  "What was AAPL revenue in 2023?",
+  "How did NVDA revenue grow from 2023 to 2025?",
+  "What is MSFT R&D expense in 2024?",
+  "What are the main risk factors for AMZN?"
+];
+const chips = document.getElementById('chips');
+examples.forEach(e => { const b = document.createElement('button'); b.type='button'; b.className='chip'; b.textContent=e;
+  b.onclick = () => { document.getElementById('q').value = e; document.getElementById('f').requestSubmit(); }; chips.appendChild(b); });
+
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+document.getElementById('f').addEventListener('submit', async ev => {
+  ev.preventDefault();
+  const q = document.getElementById('q').value, go = document.getElementById('go'), out = document.getElementById('out');
+  go.disabled = true; out.innerHTML = '<div class="card">Thinking…</div>';
+  try {
+    const r = await fetch('/api/ask', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({question:q}) });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail || r.statusText);
+    out.innerHTML = `<div class="card">
+      <div><span class="badge ${d.verified?'ok':'bad'}">${d.verified?'numbers verified':'unverified numbers'}</span>
+      <span class="badge">${esc(d.mode)}</span><span class="badge">${d.latency_s}s</span>${d.cached?'<span class="badge">cached</span>':''}</div>
+      <p><pre>${esc(d.answer)}</pre></p>
+      <details><summary>Agent trace (${d.trace.length} steps)</summary><pre><code>${esc(JSON.stringify(d.trace,null,2))}</code></pre></details></div>`;
+  } catch (e) { out.innerHTML = `<div class="card bad">Error: ${esc(e.message)}</div>`; }
+  go.disabled = false;
+});
+</script>
+</body>
+</html>

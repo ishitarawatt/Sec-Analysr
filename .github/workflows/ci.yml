@@ -1,0 +1,30 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements.txt
+      - run: pytest -q
+      - run: docker build -t sec-analyst .
+  eval-gate:
+    # Runs the XBRL-derived eval on main with a real index; fails the build on regression.
+    if: github.ref == 'refs/heads/main' && vars.RUN_EVALS == 'true'
+    needs: test
+    runs-on: ubuntu-latest
+    env:
+      SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements.txt
+      - run: python -m app.ingest
+      - run: python -m evals.build_eval_set
+      - run: python -m evals.run_eval --limit 60 --tag ci --min-accuracy 0.80
+      - uses: actions/upload-artifact@v4
+        with: { name: eval-results, path: evals/results_ci.json }

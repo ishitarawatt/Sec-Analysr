@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+.env
+data/
+finetune/data/
+finetune/out/
+evals/eval_set.jsonl
+evals/results_*.json
+.pytest_cache/
+_to_delete/
+push.bat
